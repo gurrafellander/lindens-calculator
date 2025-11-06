@@ -68,7 +68,7 @@ function computeSpecial() {
   const d = qty("spec_d");
   const h = qty("spec_h");
 
-  // TODO: chack how to calc this
+  // TODO: check how to calc this
   console.log(b, h);
   const shelves = qty("spec_hyll");
   const surfaceCalc = typ === "skiva" ? b * h : 2 * (b * h + b * d + d * h);
