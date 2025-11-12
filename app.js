@@ -123,7 +123,7 @@ function compute() {
   for (const [qtyId, priceId] of map) {
     const q = qty(qtyId);
     const p = readPrice(priceId);
-    const line = q * p;
+    const line = !Number.isNaN(q) ? q * p : 0;
     setText("line_" + qtyId, q > 0 ? SEK(line) : "—");
     material += line;
   }
@@ -133,10 +133,10 @@ function compute() {
   setText("belopp", SEK(belopp));
 
   // extras
-  const matt = qty("mattlack");
-  const spack = qty("spackling");
-  const bryt = qty("brytkostnad");
-  const stall = qty("stallkostnad");
+  const matt = ~~qty("mattlack");
+  const spack = ~~qty("spackling");
+  const bryt = ~~qty("brytkostnad");
+  const stall = ~~qty("stallkostnad");
 
   setText("res_mattlack", SEK(matt));
   setText("res_spackling", SEK(spack));
@@ -144,20 +144,20 @@ function compute() {
   setText("res_stallkostnad", SEK(stall));
 
   // work + travel
-  const timmar = qty("timmar");
-  const timpris = readPrice("p_timpris");
+  const timmar = ~~qty("timmar");
+  const timpris = ~~readPrice("p_timpris");
   const arbete = timmar * timpris;
   setText("res_arbete", SEK(arbete));
 
-  const besok = qty("besok");
-  const prisBesok = readPrice("p_besok");
+  const besok = ~~qty("besok");
+  const prisBesok = ~~readPrice("p_besok");
   const resor = besok * prisBesok;
 
   // subtotal before discount
   let subtotal = belopp + matt + spack + bryt + stall + arbete + resor;
-
+  
   // discount
-  const rabattPct = (Number.parseFloat(el("rabatt").value) ?? 0) / 100;
+  const rabattPct = ~~(Number.parseFloat(el("rabatt").value) ?? 0) / 100;
   const rabattBelopp = subtotal * rabattPct;
   setText("res_rabatt", rabattPct ? "− " + SEK(rabattBelopp) : SEK(0));
   subtotal -= rabattBelopp;
@@ -174,5 +174,4 @@ function compute() {
 // --- Init ---
 loadState();
 bindAutoSave();
-el("calcBtn").addEventListener("click", compute);
 compute();
