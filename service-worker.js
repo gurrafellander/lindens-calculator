@@ -1,12 +1,12 @@
-const CACHE_NAME = 'kalkyl-cache-v1';
+const CACHE_NAME = 'kalkyl-cache-v2';
 const FILES_TO_CACHE = [
   '/',
   '/index.html',
+  '/prices.html',
+  '/prices.json',
   '/style.css',
   '/app.js',
-  '/manifest.json',
-  '/assets/icons/icon-192.png',
-  '/assets/icons/icon-512.png'
+  '/manifest.json'
 ];
 
 self.addEventListener('install', e => {

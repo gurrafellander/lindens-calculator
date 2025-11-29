@@ -3,7 +3,11 @@
 
 // --- Helpers ---
 const el = (id) => document.getElementById(id);
-const setText = (id, v) => (el(id).textContent = v);
+const setText = (id, v) => {
+  const element = el(id);
+  if (element) element.textContent = v;
+};
+
 const SEK = (v) =>
   Number.isFinite(v)
     ? new Intl.NumberFormat("sv-SE", {
@@ -22,7 +26,6 @@ function saveState() {
     (i) => (obj[i.id] = i.type === "checkbox" ? i.checked : i.value)
   );
   localStorage.setItem(LS_KEY, JSON.stringify(obj));
-  el("lastSave").textContent = "Autospar: klart";
 }
 
 function loadState() {
@@ -39,23 +42,24 @@ function loadState() {
 
 // --- Bind autosave ---
 function bindAutoSave() {
+  console.log("Saved")
   document.querySelectorAll("input, select").forEach((i) => {
     const handler = () => {
       saveState();
       compute();
     };
-    i.addEventListener("input", handler, { passive: true });
-    i.addEventListener("change", handler, { passive: true });
+    i.addEventListener("input", handler);
+    i.addEventListener("change", handler);
   });
 }
 
 // --- Core calculation helpers ---
 function readPrice(id) {
-  return Number.parseFloat(el(id).value) ?? 0;
+  return Number.parseFloat(el(id)?.value) ?? 0;
 }
 
 function qty(id) {
-  return Number.parseFloat(el(id).value) ?? 0;
+  return Number.parseFloat(el(id)?.value) ?? 0;
 }
 
 // --- Special computation ---
@@ -63,10 +67,10 @@ function computeSpecial() {
   const typ = el("spec_typ").value;
 
   // areas in m²
-  const ant = qty("spec_antal");
-  const b = qty("spec_b");
-  const d = qty("spec_d");
-  const h = qty("spec_h");
+  const ant = ~~qty("spec_antal");
+  const b = ~~qty("spec_b");
+  const d = ~~qty("spec_d");
+  const h = ~~qty("spec_h");
 
   // TODO: check how to calc this
   console.log(b, h);
@@ -133,28 +137,18 @@ function compute() {
   setText("belopp", SEK(belopp));
 
   // extras
-  const matt = ~~qty("mattlack");
-  const spack = ~~qty("spackling");
-  const bryt = ~~qty("brytkostnad");
-  const stall = ~~qty("stallkostnad");
+  const spack = ~~qty("spackling")*readPrice("p_spackling");
+  const stall = ~~qty("stallkostnad")*readPrice("p_stallkostnad");
 
-  setText("res_mattlack", SEK(matt));
   setText("res_spackling", SEK(spack));
-  setText("res_brytkostnad", SEK(bryt));
   setText("res_stallkostnad", SEK(stall));
-
-  // work + travel
-  const timmar = ~~qty("timmar");
-  const timpris = ~~readPrice("p_timpris");
-  const arbete = timmar * timpris;
-  setText("res_arbete", SEK(arbete));
 
   const besok = ~~qty("besok");
   const prisBesok = ~~readPrice("p_besok");
   const resor = besok * prisBesok;
 
   // subtotal before discount
-  let subtotal = belopp + matt + spack + bryt + stall + arbete + resor;
+  let subtotal = belopp + spack + stall + resor;
   
   // discount
   const rabattPct = ~~(Number.parseFloat(el("rabatt").value) ?? 0) / 100;
