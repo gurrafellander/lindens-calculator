@@ -316,6 +316,10 @@
 
     <!-- JS -->
     <script>
+      const LS_KEY = "kalkyl_state_v2";
+    </script>
+
+    <script>
       fetch("prices.html")
         .then(r => r.text())
         .then(html => {
@@ -324,26 +328,37 @@
     </script>
     <script>
       async function loadPriceDefaults() {
+        // 1. Läs sparat state (om det finns)
+        const raw = localStorage.getItem(LS_KEY);
+        const saved = raw ? JSON.parse(raw) : {};
+
         try {
           const response = await fetch("prices.json");
           const data = await response.json();
 
           Object.entries(data).forEach(([id, value]) => {
             const input = document.getElementById(id);
-            if (input) input.value = value;
-            else console.warn("ID saknas i HTML:", id);
+            if (!input) return;
+
+            // 2. Sätt default endast om inget sparat värde finns
+            if (saved[id] === undefined) {
+              input.value = value;
+            }
           });
 
         } catch (err) {
           console.error("Kunde inte läsa JSON:", err);
         }
+
+        // 3. Ladda alltid sparat state sist (har högst prioritet)
+        loadState();
         bindAutoSave();
         compute();
       }
 
       loadPriceDefaults();
+</script>
 
-    </script>
 
     <script>
       if ("serviceWorker" in navigator) {
