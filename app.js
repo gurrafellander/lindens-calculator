@@ -17,7 +17,7 @@ const SEK = (v) =>
     : "—";
 
 // --- LocalStorage helpers ---
-const LS_KEY = "kalkyl_state_v2";
+const LS_KEY = "kalkyl_state_v3";
 
 function saveState() {
   const inputs = Array.from(document.querySelectorAll("input, select"));
@@ -167,5 +167,4 @@ function compute() {
 
 // --- Init ---
 loadState();
-bindAutoSave();
 compute();
