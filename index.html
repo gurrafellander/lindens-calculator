@@ -28,6 +28,18 @@
       </p>
     </div>
 
+    <div class="card">
+      <h3>Typ</h3>
+      <p class="muted">Välj vilken typ</p>
+      <select id="typ_material" class="select">
+                <option value="lackad">Industrilackad</option>
+                <option value="painted">Handmålad</option>
+                <option value="sixties">"60-talskök"</option>
+                <option value="wallpaper">Tapet</option>
+                <option value="wood">Trä/Fanér</option>
+              </select>
+    </div>
+
     <!-- 1) Dörrar / luckor / list -->
     <div class="card">
       <h3>Typer</h3>
@@ -254,14 +266,10 @@
     </div>
 
     <!-- 3) Arbete + tillägg -->
-    <div class="card grid g3">
+    <div class="card grid g1">
       <div class="field">
-        <label for="besok">Antal besök</label>
-        <input id="besok" class="input" type="number" min="0" step="1" value="1" inputmode="numeric" />
-      </div>
-      <div class="field">
-        <label for="rabatt">Rabatt (%)</label>
-        <input id="rabatt" class="input" type="number" min="0" max="100" step="0.1" value="0" inputmode="decimal" />
+        <label for="color">Kulörtillägg</label>
+        <input id="color" class="input" type="number" min="0" step="1" value="1" inputmode="numeric" />
       </div>
       <div class="field">
         <label for="spackling">Spackling</label>
@@ -269,16 +277,12 @@
       </div>
       <div class="field">
         <label for="stallkostnad">Ställkostnad</label>
-        <input id="stallkostnad" class="input" type="number" min="0" step="1" value="0" inputmode="numeric" />
+        <input id="stallkostnad" class="input" type="number" min="0" step="1" value="1" inputmode="numeric" />
       </div>
       <div class="field">
-        <label for="vat">Moms (%)</label>
-        <select id="vat" class="select">
-          <option value="25" selected>25%</option>
-          <option value="12">12%</option>
-          <option value="6">6%</option>
-          <option value="0">0%</option>
-        </select>
+        <label for="vat">Moms (25%)</label>
+        <input type="checkbox" id="vat"/>
+    
       </div>
     </div>
 
@@ -290,13 +294,13 @@
           <span class="muted">Belopp (material + special):</span><strong id="belopp">—</strong>
         </div>
         <div class="row" style="justify-content: space-between">
+          <span class="muted">Kulörtillägg:</span><strong id="res_color">—</strong>
+        </div>
+        <div class="row" style="justify-content: space-between">
           <span class="muted">Spackling:</span><strong id="res_spackling">—</strong>
         </div>
         <div class="row" style="justify-content: space-between">
           <span class="muted">Ställkostnad:</span><strong id="res_stallkostnad">—</strong>
-        </div>
-        <div class="row" style="justify-content: space-between">
-          <span class="muted">Rabatt:</span><strong id="res_rabatt">—</strong>
         </div>
         <hr />
         <div class="row" style="justify-content: space-between">
@@ -311,51 +315,35 @@
       </div>
     </div>
 
-    <div id="prislista-container"></div>
+    <!-- <div id="prislista-container"></div> -->
 
 
     <!-- JS -->
-    <script>
-      const LS_KEY = "kalkyl_state_v2";
-    </script>
 
-    <script>
+    <!-- <script>
       fetch("prices.html")
         .then(r => r.text())
         .then(html => {
           document.getElementById("prislista-container").innerHTML = html;
         });
-    </script>
+    </script> -->
     <script>
       async function loadPriceDefaults() {
-        // 1. Läs sparat state (om det finns)
-        const raw = localStorage.getItem(LS_KEY);
-        const saved = raw ? JSON.parse(raw) : {};
 
         try {
           const response = await fetch("prices.json");
           const data = await response.json();
-
           Object.entries(data).forEach(([id, value]) => {
             const input = document.getElementById(id);
             if (!input) return;
 
-            // 2. Sätt default endast om inget sparat värde finns
-            if (saved[id] === undefined) {
-              input.value = value;
-            }
+            input.value = value;
           });
 
         } catch (err) {
           console.error("Kunde inte läsa JSON:", err);
         }
-
-        // 3. Ladda alltid sparat state sist (har högst prioritet)
-        loadState();
-        bindAutoSave();
-        compute();
       }
-
       loadPriceDefaults();
 </script>
 

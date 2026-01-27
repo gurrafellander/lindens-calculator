@@ -1,8 +1,12 @@
 // === app.js ===
-// Kalkyl, autosave och rendering
+// Stateless kalkyl – live beräkning utan persistens
+
+// ===== Prices (loaded once from prices.json) =====
+let PRICES = {};
 
 // --- Helpers ---
 const el = (id) => document.getElementById(id);
+
 const setText = (id, v) => {
   const element = el(id);
   if (element) element.textContent = v;
@@ -16,154 +20,131 @@ const SEK = (v) =>
       }).format(v)
     : "—";
 
-// --- LocalStorage helpers ---
-
-function saveState() {
-  const inputs = Array.from(document.querySelectorAll("input, select"));
-  const obj = {};
-  inputs.forEach(
-    (i) => (obj[i.id] = i.type === "checkbox" ? i.checked : i.value)
-  );
-  localStorage.setItem(LS_KEY, JSON.stringify(obj));
+// --- Safe numeric readers ---
+function readNumber(id) {
+  const v = Number.parseFloat(el(id)?.value);
+  return Number.isFinite(v) ? v : 0;
 }
 
-function loadState() {
-  const raw = localStorage.getItem(LS_KEY);
-  if (!raw) return;
-  const obj = JSON.parse(raw);
-  Object.entries(obj).forEach(([k, v]) => {
-    const i = el(k);
-    if (!i) return;
-    if (i.type === "checkbox") i.checked = !!v;
-    else i.value = v;
-  });
+function readInt(id) {
+  return Math.floor(readNumber(id));
 }
 
-// --- Bind autosave ---
-function bindAutoSave() {
-  console.log("Saved")
-  document.querySelectorAll("input, select").forEach((i) => {
-    const handler = () => {
-      saveState();
-      compute();
-    };
-    i.addEventListener("input", handler);
-    i.addEventListener("change", handler);
-  });
-}
-
-// --- Core calculation helpers ---
-function readPrice(id) {
-  return Number.parseFloat(el(id)?.value) ?? 0;
-}
-
-function qty(id) {
-  return Number.parseFloat(el(id)?.value) ?? 0;
+async function loadPriceDefaults() {
+  try {
+    const res = await fetch("prices.json");
+    PRICES = await res.json();
+    compute(); // first valid compute
+  } catch (err) {
+    console.error("Failed to load prices.json", err);
+  }
 }
 
 // --- Special computation ---
 function computeSpecial() {
   const typ = el("spec_typ").value;
 
-  // areas in m²
-  const ant = ~~qty("spec_antal");
-  const b = ~~qty("spec_b");
-  const d = ~~qty("spec_d");
-  const h = ~~qty("spec_h");
+  const ant = readInt("spec_antal");
+  const b = readInt("spec_b");
+  const d = readInt("spec_d");
+  const h = readInt("spec_h");
+  const shelves = readInt("spec_hyll");
 
-  // TODO: check how to calc this
-  console.log(b, h);
-  const shelves = qty("spec_hyll");
-  const surfaceCalc = typ === "skiva" ? b * h : 2 * (b * h + b * d + d * h);
-  const m2 = (surfaceCalc / 1e6) * ant; // front area
-  console.log(m2);
+  const surfaceCalc =
+    typ === "skiva"
+      ? b * h
+      : 2 * (b * h + b * d + d * h);
 
-  setText("spec_m2", m2 ? m2.toFixed(2) : "—");
+  const m2 = (surfaceCalc / 1e6) * ant;
 
-  const p_m2 = readPrice(
+  setText("spec_m2", m2 > 0 ? m2.toFixed(2) : "—");
+
+  const p_m2 = readNumber(
     typ === "skiva" ? "p_spec_skiva_m2" : "p_spec_mobel_m2"
   );
-  const p_hyll = readPrice("p_hyllplan");
-  const sidePct = readPrice("p_paslag_side_pct") / 100;
+  const p_hyll = readNumber("p_hyllplan");
 
   const sideCount = ["spec_utv", "spec_bak", "spec_under", "spec_inv"]
-    .map((id) => (el(id).checked ? 1 : 0))
+    .map((id) => (el(id)?.checked ? 1 : 0))
     .reduce((a, b) => a + b, 0);
 
   let sum = m2 * p_m2;
   sum += shelves * p_hyll;
-  sum *= 1 + sideCount * sidePct;
+  sum *= 1 + sideCount;
 
-  setText("spec_sum", SEK(sum));
+  setText("spec_sum", sum > 0 ? SEK(sum) : "—");
 
   return sum;
 }
 
-// --- Main compute() function ---
+// --- Main compute ---
 function compute() {
-  // material lines
-  const map = [
-    ["lucka_u1000", "p_lucka_u1000"],
-    ["lucka_1000_1500", "p_lucka_1000_1500"],
-    ["lucka_spegel", "p_lucka_spegel"],
-    ["skafferidor", "p_skafferidor"],
-    ["garderob_o1500", "p_garderob_o1500"],
-    ["ladfront_45", "p_ladfront_45"],
-    ["ladfront_stor", "p_ladfront_stor"],
-    ["innerdor", "p_innerdor"],
-    ["innerdor_glas", "p_innerdor_glas"],
-    ["stol", "p_stol"],
-    ["kryddhylla", "p_kryddhylla"],
-    ["bord", "p_bord"],
-    ["ytterdor_1", "p_ytterdor_1"],
-    ["ytterdor_2", "p_ytterdor_2"],
-    ["karm", "p_karm"],
-    ["sidoljus", "p_sidoljus"],
-    ["sockel_m", "p_sockel_m"],
+  const type = el("typ_material").value;
+
+  const items = [
+    "lucka_u1000",
+    "lucka_1000_1500",
+    "lucka_spegel",
+    "skafferidor",
+    "garderob_o1500",
+    "ladfront_45",
+    "ladfront_stor",
+    "innerdor",
+    "innerdor_glas",
+    "stol",
+    "kryddhylla",
+    "bord",
+    "ytterdor_1",
+    "ytterdor_2",
+    "karm",
+    "sidoljus",
+    "sockel_m",
   ];
 
   let material = 0;
-  for (const [qtyId, priceId] of map) {
-    const q = qty(qtyId);
-    const p = readPrice(priceId);
-    const line = !Number.isNaN(q) ? q * p : 0;
-    setText("line_" + qtyId, q > 0 ? SEK(line) : "—");
+
+  for (const id of items) {
+    const q = readNumber(id);
+    const key = `${type}_p_${id}`;
+    const p = PRICES[key] ?? 0;
+
+    // console.log(key, "qty:", q, "price:", p);
+
+    const line = q * p;
+    setText("line_" + id, q > 0 ? SEK(line) : "—");
     material += line;
   }
 
-  const spec_sum = computeSpecial();
-  const belopp = material + spec_sum;
+  const specSum = computeSpecial();
+  const belopp = material + specSum;
+
   setText("belopp", SEK(belopp));
 
-  // extras
-  const spack = ~~qty("spackling")*readPrice("p_spackling");
-  const stall = ~~qty("stallkostnad")*readPrice("p_stallkostnad");
+  // --- Extras ---
+  console.log(readInt("spackling"), `${type}_p_spackling`)
+  const spack = readInt("spackling") * PRICES[`${type}_p_spackling`];
+  const stall = readInt("stallkostnad") * PRICES[`${type}_p_stallkostnad`];
+  const color = readInt("color") * PRICES[`${type}_p_color`];
 
   setText("res_spackling", SEK(spack));
   setText("res_stallkostnad", SEK(stall));
+  setText("res_color", SEK(color));
 
-  const besok = ~~qty("besok");
-  const prisBesok = ~~readPrice("p_besok");
-  const resor = besok * prisBesok;
+  const subtotal = belopp + spack + stall + color;
 
-  // subtotal before discount
-  let subtotal = belopp + spack + stall + resor;
-  
-  // discount
-  const rabattPct = ~~(Number.parseFloat(el("rabatt").value) ?? 0) / 100;
-  const rabattBelopp = subtotal * rabattPct;
-  setText("res_rabatt", rabattPct ? "− " + SEK(rabattBelopp) : SEK(0));
-  subtotal -= rabattBelopp;
-
-  // VAT and ROT
   setText("summa", SEK(subtotal));
   setText("exkl_rot", SEK(subtotal * 0.7));
 
-  const vatPct = (Number.parseFloat(el("vat").value) ?? 0) / 100;
+  const vatPct = el("vat")?.checked ? 0.25 : 0;
   const inklMoms = subtotal * (1 + vatPct);
+
   setText("inkl_moms", SEK(inklMoms));
 }
 
-// --- Init ---
-loadState();
-compute();
+// ===== Init =====
+loadPriceDefaults();
+
+document.querySelectorAll("input, select").forEach((node) => {
+  node.addEventListener("input", compute);
+  node.addEventListener("change", compute);
+});
